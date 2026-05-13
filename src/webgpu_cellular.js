@@ -22,6 +22,10 @@ async function init() {
   const width = 10, height = 10;
   const storageTexture = new THREE.StorageTexture(width, height);
 
+  storageTexture.minFilter = THREE.NearestFilter;
+  storageTexture.magFilter = THREE.NearestFilter;
+  storageTexture.generateMipmaps = false;
+
   const computeTexture = Fn(({ storageTexture }) => {
       const posX = instanceIndex.mod(width);
       const posY = instanceIndex.div(width);
