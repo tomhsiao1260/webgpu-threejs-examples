@@ -4,6 +4,7 @@ import { texture, textureStore, Fn, instanceIndex, float, uvec2, vec2, vec4 } fr
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
 
 let camera, scene, renderer;
+let phase = true;
 
 init().then(render);
 
@@ -74,5 +75,11 @@ function onWindowResize() {
 }
 
 function render() {
-    renderer.render(scene, camera);
+  renderer.render(scene, camera);
 }
+
+document.addEventListener('keypress', (e) => {
+  if (e.code === 'Space') {
+    phase = ! phase;
+  }
+})
