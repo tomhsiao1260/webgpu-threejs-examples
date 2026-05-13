@@ -4,6 +4,8 @@ import { texture, textureStore, Fn, instanceIndex, float, uvec2, vec2, vec4, ste
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
 
 let camera, scene, renderer;
+let pingTexture, pongTexture;
+let material;
 let phase = true;
 
 init().then(render);
@@ -21,17 +23,22 @@ async function init() {
   scene = new THREE.Scene();
 
   const width = 10, height = 10;
-  const storageTexture = new THREE.StorageTexture(width, height);
 
-  storageTexture.minFilter = THREE.NearestFilter;
-  storageTexture.magFilter = THREE.NearestFilter;
-  storageTexture.generateMipmaps = false;
+  pingTexture = new THREE.StorageTexture(width, height);
+  pingTexture.minFilter = THREE.NearestFilter;
+  pingTexture.magFilter = THREE.NearestFilter;
+  pingTexture.generateMipmaps = false;
+
+  pongTexture = new THREE.StorageTexture(width, height);
+  pongTexture.minFilter = THREE.NearestFilter;
+  pongTexture.magFilter = THREE.NearestFilter;
+  pongTexture.generateMipmaps = false;
 
   const rand2 = Fn(([ n ]) => {
     return n.dot(vec2(12.9898, 4.1414)).sin().mul(43758.5453).fract();
   });
 
-  const computeTexture = Fn(({ storageTexture }) => {
+  const computeTexture = Fn(() => {
     const posX = instanceIndex.mod(width);
     const posY = instanceIndex.div(width);
     const indexUV = uvec2(posX, posY);
@@ -39,13 +46,13 @@ async function init() {
 
     const v = step(0.5, rand2(uv));
 
-    textureStore(storageTexture, indexUV, vec4(v, v, v, 1)).toWriteOnly();
+    textureStore(pingTexture, indexUV, vec4(v, v, v, 1)).toWriteOnly();
   });
 
-  const computeNode = computeTexture({ storageTexture }).compute(width * height);
+  const computeNode = computeTexture({ pingTexture }).compute(width * height);
 
-  const material = new THREE.MeshBasicNodeMaterial({ color: 0x00ff00 });
-  material.colorNode = texture(storageTexture);
+  material = new THREE.MeshBasicNodeMaterial({ color: 0xffffff });
+  material.map = pingTexture;
 
   const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
   scene.add(plane);
@@ -82,6 +89,11 @@ function render() {
 
 document.addEventListener('keypress', (e) => {
   if (e.code === 'Space') {
+    e.preventDefault();
+
     phase = !phase;
+    material.map = phase ? pingTexture : pongTexture;
+
+    renderer.render(scene, camera);
   }
 })
