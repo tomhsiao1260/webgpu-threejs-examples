@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { texture, textureStore, Fn, instanceIndex, float, uvec2, vec2, vec4 } from 'three/tsl';
+import { texture, textureStore, Fn, instanceIndex, float, uvec2, vec2, vec4, step } from 'three/tsl';
 
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
 
@@ -27,17 +27,19 @@ async function init() {
   storageTexture.magFilter = THREE.NearestFilter;
   storageTexture.generateMipmaps = false;
 
+  const rand2 = Fn(([ n ]) => {
+    return n.dot(vec2(12.9898, 4.1414)).sin().mul(43758.5453).fract();
+  });
+
   const computeTexture = Fn(({ storageTexture }) => {
-      const posX = instanceIndex.mod(width);
-      const posY = instanceIndex.div(width);
-      const indexUV = uvec2(posX, posY);
-      const uv = vec2(float(posX).div(width), float(posY).div(height));
+    const posX = instanceIndex.mod(width);
+    const posY = instanceIndex.div(width);
+    const indexUV = uvec2(posX, posY);
+    const uv = vec2(float(posX).div(width), float(posY).div(height));
 
-      const r = uv.x;
-      const g = uv.y;
-      const b = 1.0;
+    const v = step(0.5, rand2(uv));
 
-      textureStore(storageTexture, indexUV, vec4(r, g, b, 1)).toWriteOnly();
+    textureStore(storageTexture, indexUV, vec4(v, v, v, 1)).toWriteOnly();
   });
 
   const computeNode = computeTexture({ storageTexture }).compute(width * height);
@@ -80,6 +82,6 @@ function render() {
 
 document.addEventListener('keypress', (e) => {
   if (e.code === 'Space') {
-    phase = ! phase;
+    phase = !phase;
   }
 })
