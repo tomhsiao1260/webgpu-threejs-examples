@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { texture, textureStore, Fn, instanceIndex, uvec2, vec4 } from 'three/tsl';
+import { texture, textureStore, Fn, instanceIndex, float, uvec2, vec2, vec4 } from 'three/tsl';
 
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
 
@@ -26,8 +26,13 @@ async function init() {
       const posX = instanceIndex.mod(width);
       const posY = instanceIndex.div(width);
       const indexUV = uvec2(posX, posY);
+      const uv = vec2(float(posX).div(width), float(posY).div(height));
 
-      textureStore(storageTexture, indexUV, vec4(1, 0, 0, 1)).toWriteOnly();
+      const r = uv.x;
+      const g = uv.y;
+      const b = 1.0;
+
+      textureStore(storageTexture, indexUV, vec4(r, g, b, 1)).toWriteOnly();
   });
 
   const computeNode = computeTexture({ storageTexture }).compute(width * height);
