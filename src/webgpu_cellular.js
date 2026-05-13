@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { texture, textureStore, Fn, instanceIndex, float, uvec2, vec2, vec4, step } from 'three/tsl';
+import { storageTexture, textureStore, Fn, instanceIndex, float, uvec2, vec2, vec4, step, NodeAccess } from 'three/tsl';
 
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
 
@@ -38,7 +38,13 @@ async function init() {
     return n.dot(vec2(12.9898, 4.1414)).sin().mul(43758.5453).fract();
   });
 
-  const computeTexture = Fn(() => {
+  // Create storage texture nodes with proper access
+  const writePing = storageTexture(pingTexture).setAccess(NodeAccess.WRITE_ONLY);
+  const readPing = storageTexture(pingTexture).setAccess(NodeAccess.READ_ONLY);
+  const writePong = storageTexture(pongTexture).setAccess(NodeAccess.WRITE_ONLY);
+  const readPong = storageTexture(pongTexture).setAccess(NodeAccess.READ_ONLY);
+
+  const computeInit = Fn(() => {
     const posX = instanceIndex.mod(width);
     const posY = instanceIndex.div(width);
     const indexUV = uvec2(posX, posY);
@@ -46,10 +52,10 @@ async function init() {
 
     const v = step(0.5, rand2(uv));
 
-    textureStore(pingTexture, indexUV, vec4(v, v, v, 1)).toWriteOnly();
+    textureStore(writePing, indexUV, vec4(v, v, v, 1)).toWriteOnly();
   });
 
-  const computeNode = computeTexture({ pingTexture }).compute(width * height);
+  const computeNode = computeInit().compute(width * height);
 
   material = new THREE.MeshBasicNodeMaterial({ color: 0xffffff });
   material.map = pingTexture;
