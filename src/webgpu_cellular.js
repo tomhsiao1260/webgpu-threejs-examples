@@ -1,9 +1,10 @@
 import * as THREE from 'three/webgpu';
-import { storageTexture, textureStore, Fn, instanceIndex, float, uvec2, vec2, vec4, step, NodeAccess } from 'three/tsl';
+import { storageTexture, textureStore, Fn, instanceIndex, float, uvec2, ivec2, vec2, vec4, step, NodeAccess } from 'three/tsl';
 
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
 
 let camera, scene, renderer;
+let computeToPing, computeToPong;
 let pingTexture, pongTexture;
 let material;
 let phase = true;
@@ -55,7 +56,20 @@ async function init() {
     textureStore(writePing, indexUV, vec4(v, v, v, 1)).toWriteOnly();
   });
 
-  const computeNode = computeInit().compute(width * height);
+  const computeInitNode = computeInit().compute(width * height);
+
+  const computePingPong = Fn(([ readTex, writeTex ]) => {
+    const posX = instanceIndex.mod(width);
+    const posY = instanceIndex.div(width);
+    const uv = uvec2(posX, posY);
+
+    const v = readTex.load(uv.add(ivec2(-1, 0)));
+
+    textureStore(writeTex, uv, v);
+  });
+
+  computeToPong = computePingPong(readPing, writePong).compute(width * height);
+  computeToPing = computePingPong(readPong, writePing).compute(width * height);
 
   material = new THREE.MeshBasicNodeMaterial({ color: 0xffffff });
   material.map = pingTexture;
@@ -71,7 +85,7 @@ async function init() {
   await renderer.init();
 
   // compute texture
-  renderer.compute(computeNode);
+  renderer.compute(computeInitNode);
 
   window.addEventListener('resize', onWindowResize);
 }
@@ -98,6 +112,9 @@ document.addEventListener('keypress', (e) => {
     e.preventDefault();
 
     phase = !phase;
+
+    renderer.compute(phase ? computeToPing : computeToPong);
+
     material.map = phase ? pingTexture : pongTexture;
 
     renderer.render(scene, camera);
