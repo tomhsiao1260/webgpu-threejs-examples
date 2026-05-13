@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { texture, textureStore } from 'three/tsl';
+import { texture, textureStore, Fn, instanceIndex, uvec2, vec4 } from 'three/tsl';
 
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
 
@@ -22,6 +22,16 @@ async function init() {
   const width = 10, height = 10;
   const storageTexture = new THREE.StorageTexture(width, height);
 
+  const computeTexture = Fn(({ storageTexture }) => {
+      const posX = instanceIndex.mod(width);
+      const posY = instanceIndex.div(width);
+      const indexUV = uvec2(posX, posY);
+
+      textureStore(storageTexture, indexUV, vec4(1, 0, 0, 1)).toWriteOnly();
+  });
+
+  const computeNode = computeTexture({ storageTexture }).compute(width * height);
+
   const material = new THREE.MeshBasicNodeMaterial({ color: 0x00ff00 });
   material.colorNode = texture(storageTexture);
 
@@ -34,6 +44,9 @@ async function init() {
   document.body.appendChild(renderer.domElement);
 
   await renderer.init();
+
+  // compute texture
+  renderer.compute(computeNode);
 
   window.addEventListener('resize', onWindowResize);
 }
