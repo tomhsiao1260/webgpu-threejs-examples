@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { texture, textureStore } from 'three/tsl';
 
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
 
@@ -18,7 +19,12 @@ async function init() {
 
   scene = new THREE.Scene();
 
+  const width = 10, height = 10;
+  const storageTexture = new THREE.StorageTexture(width, height);
+
   const material = new THREE.MeshBasicNodeMaterial({ color: 0x00ff00 });
+  material.colorNode = texture(storageTexture);
+
   const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
   scene.add(plane);
 
