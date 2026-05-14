@@ -137,11 +137,24 @@ document.addEventListener('keypress', (e) => {
     e.preventDefault();
 
     phase = !phase;
-
     renderer.compute(phase ? computeToPing : computeToPong);
-
     material.map = phase ? pingTexture : pongTexture;
 
     renderer.render(scene, camera);
   }
 })
+
+// mouse event handling
+document.addEventListener('mousedown', (e) => {
+  if (e.target.tagName.toLowerCase() !== 'canvas') return
+  document.addEventListener('mousemove', update)
+  update(e)
+})
+document.addEventListener('mouseup', (e) => {
+  if (e.target.tagName.toLowerCase() !== 'canvas') return
+  document.removeEventListener('mousemove', update)
+})
+
+function update(e) {
+  console.log('update')
+}

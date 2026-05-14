@@ -6,4 +6,4 @@ import './style.css';
 // import './webgpu_compute_texture_pingpong.js';
 
 // Else
-import './webgpu_cellular.js';
+import './webgpu_cellular_automata.js';
