@@ -3,7 +3,7 @@ import WebGPU from 'three/addons/capabilities/WebGPU.js';
 
 import { storageTexture, textureStore, instanceIndex, NodeAccess } from 'three/tsl';
 import { float, vec2, vec3, vec4, uvec2, ivec2, uniform } from 'three/tsl';
-import { Fn, If, step, select } from 'three/tsl';
+import { Fn, If, step, select, distance } from 'three/tsl';
 
 let camera, scene, renderer;
 let computeToPing, computeToPong;
@@ -11,6 +11,7 @@ let sketchToPing, sketchToPong;
 let pingTexture, pongTexture;
 let material;
 
+const width = 100, height = 100;
 const sketch = uniform(new THREE.Vector2());
 const meshes = [];
 let phase = true;
@@ -28,8 +29,6 @@ async function init() {
   camera.position.z = 1;
 
   scene = new THREE.Scene();
-
-  const width = 10, height = 10;
 
   pingTexture = new THREE.StorageTexture(width, height);
   pingTexture.minFilter = THREE.NearestFilter;
@@ -100,16 +99,23 @@ async function init() {
   computeToPong = computePingPong(readPing, writePong).compute(width * height);
   computeToPing = computePingPong(readPong, writePing).compute(width * height);
 
-  const computeSketch = Fn(([ writeTex ]) => {
+  const computeSketch = Fn(([ readTex, writeTex ]) => {
     const posX = instanceIndex.mod(width);
     const posY = instanceIndex.div(width);
     const uv = uvec2(posX, posY);
 
-    textureStore(writeTex, uv, vec4(sketch, 1.0, 1.0));
+    const radius = 1.0;
+    const p = sketch.mul(vec2(width, height));
+    const dot = step(distance(uv, p), radius);
+
+    const background = readTex.load(uv.add(ivec2(0, 0))).r;
+    const color = vec3(dot.or(background));
+
+    textureStore(writeTex, uv, vec4(color, 1.0));
   });
 
-  sketchToPong = computeSketch(writePong).compute(width * height);
-  sketchToPing = computeSketch(writePing).compute(width * height);
+  sketchToPong = computeSketch(readPing, writePong).compute(width * height);
+  sketchToPing = computeSketch(readPong, writePing).compute(width * height);
 
   material = new THREE.MeshBasicNodeMaterial({ color: 0xffffff });
   material.map = pingTexture;
@@ -185,6 +191,7 @@ function update(e) {
     const { uv } = intersects[0];
     sketch.value.set(uv.x, uv.y);
 
+    phase = !phase;
     renderer.compute(phase ? sketchToPing : sketchToPong);
     renderer.render(scene, camera);
   }
