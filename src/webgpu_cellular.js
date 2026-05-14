@@ -1,7 +1,9 @@
 import * as THREE from 'three/webgpu';
-import { storageTexture, textureStore, Fn, instanceIndex, float, uvec2, ivec2, vec2, vec4, step, NodeAccess } from 'three/tsl';
-
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
+
+import { storageTexture, textureStore, instanceIndex, NodeAccess } from 'three/tsl';
+import { float, vec2, vec3, vec4, uvec2, ivec2 } from 'three/tsl';
+import { Fn, If, step, select } from 'three/tsl';
 
 let camera, scene, renderer;
 let computeToPing, computeToPong;
@@ -63,9 +65,32 @@ async function init() {
     const posY = instanceIndex.div(width);
     const uv = uvec2(posX, posY);
 
-    const v = readTex.load(uv.add(ivec2(-1, 0)));
+    const k = readTex.load(uv.add(ivec2(-1, -1))).r;
+    const l = readTex.load(uv.add(ivec2( 0, -1))).r;
+    const m = readTex.load(uv.add(ivec2(+1, -1))).r;
+    const n = readTex.load(uv.add(ivec2(-1,  0))).r;
+    const o = readTex.load(uv.add(ivec2( 0,  0))).r;
+    const p = readTex.load(uv.add(ivec2(+1,  0))).r;
+    const q = readTex.load(uv.add(ivec2(-1, +1))).r;
+    const r = readTex.load(uv.add(ivec2( 0, +1))).r;
+    const s = readTex.load(uv.add(ivec2(+1, +1))).r;
 
-    textureStore(writeTex, uv, v);
+    const neighbors = k.add(l).add(m).add(n).add(p).add(q).add(r).add(s);
+    const survive = float(0).toVar();
+    const alive = o;
+
+    If(alive, () => {
+      If(neighbors.greaterThan(1.5).and(neighbors.lessThan(3.5)), () => {
+        survive.assign(1);
+      });
+    }).Else(() => {
+      If(neighbors.greaterThan(2.5).and(neighbors.lessThan(3.5)), () => {
+        survive.assign(1);
+      });
+    });
+
+    const color = select(survive, vec3(1.0), vec3(0));
+    textureStore(writeTex, uv, vec4(color, 1.0));
   });
 
   computeToPong = computePingPong(readPing, writePong).compute(width * height);
