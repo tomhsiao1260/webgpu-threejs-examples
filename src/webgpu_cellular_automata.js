@@ -2,15 +2,17 @@ import * as THREE from 'three/webgpu';
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
 
 import { storageTexture, textureStore, instanceIndex, NodeAccess } from 'three/tsl';
-import { float, vec2, vec3, vec4, uvec2, ivec2 } from 'three/tsl';
+import { float, vec2, vec3, vec4, uvec2, ivec2, uniform } from 'three/tsl';
 import { Fn, If, step, select } from 'three/tsl';
 
 let camera, scene, renderer;
 let computeToPing, computeToPong;
 let pingTexture, pongTexture;
 let material;
-let phase = true;
+
+const sketch = uniform(new THREE.Vector2());
 const meshes = [];
+let phase = true;
 
 init().then(render);
 
@@ -168,6 +170,7 @@ function update(e) {
   const intersects = raycaster.intersectObjects(meshes);
 
   if (intersects.length) {
-    console.log(intersects[0].uv);
+    const { uv } = intersects[0];
+    sketch.value.set(uv.x, uv.y);
   }
 }
