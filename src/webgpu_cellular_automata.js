@@ -7,6 +7,7 @@ import { Fn, If, step, select } from 'three/tsl';
 
 let camera, scene, renderer;
 let computeToPing, computeToPong;
+let sketchToPing, sketchToPong;
 let pingTexture, pongTexture;
 let material;
 
@@ -99,6 +100,17 @@ async function init() {
   computeToPong = computePingPong(readPing, writePong).compute(width * height);
   computeToPing = computePingPong(readPong, writePing).compute(width * height);
 
+  const computeSketch = Fn(([ writeTex ]) => {
+    const posX = instanceIndex.mod(width);
+    const posY = instanceIndex.div(width);
+    const uv = uvec2(posX, posY);
+
+    textureStore(writeTex, uv, vec4(sketch, 1.0, 1.0));
+  });
+
+  sketchToPong = computeSketch(writePong).compute(width * height);
+  sketchToPing = computeSketch(writePing).compute(width * height);
+
   material = new THREE.MeshBasicNodeMaterial({ color: 0xffffff });
   material.map = pingTexture;
 
@@ -172,5 +184,8 @@ function update(e) {
   if (intersects.length) {
     const { uv } = intersects[0];
     sketch.value.set(uv.x, uv.y);
+
+    renderer.compute(phase ? sketchToPing : sketchToPong);
+    renderer.render(scene, camera);
   }
 }
