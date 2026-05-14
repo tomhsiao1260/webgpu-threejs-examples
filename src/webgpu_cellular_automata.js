@@ -10,6 +10,7 @@ let computeToPing, computeToPong;
 let pingTexture, pongTexture;
 let material;
 let phase = true;
+const meshes = [];
 
 init().then(render);
 
@@ -101,6 +102,7 @@ async function init() {
 
   const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
   scene.add(plane);
+  meshes.push(plane);
 
   renderer = new THREE.WebGPURenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -155,6 +157,17 @@ document.addEventListener('mouseup', (e) => {
   document.removeEventListener('mousemove', update)
 })
 
+const mouse = new THREE.Vector2();
+const raycaster = new THREE.Raycaster();
+
 function update(e) {
-  console.log('update')
+  mouse.x = event.clientX / window.innerWidth * 2 - 1;
+  mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(meshes);
+
+  if (intersects.length) {
+    console.log(intersects[0].uv);
+  }
 }
