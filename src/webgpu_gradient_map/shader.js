@@ -1,28 +1,62 @@
 import * as THREE from 'three/webgpu';
 
-import { textureStore, instanceIndex } from 'three/tsl';
+import { textureStore, instanceIndex, textureLoad } from 'three/tsl';
 import { Fn, hue, color, distance } from 'three/tsl';
-import { float, uvec2, vec2, vec3, vec4 } from 'three/tsl';
+import { float, vec2, vec3, vec4, uvec2, ivec2 } from 'three/tsl';
 
 const width = 20, height = 20;
 
+const posX = instanceIndex.mod(width);
+const posY = instanceIndex.div(width);
+const indexUV = uvec2(posX, posY);
+const uv = vec2(float(posX).div(width), float(posY).div(height));
+
+// F
 const textureF = new THREE.StorageTexture(width, height);
 textureF.minFilter = THREE.NearestFilter;
 textureF.magFilter = THREE.NearestFilter;
-textureF.generateMipmaps = false;
 
-const computeInit = Fn(() => {
-    const posX = instanceIndex.mod(width);
-    const posY = instanceIndex.div(width);
-    const indexUV = uvec2(posX, posY);
-    const uv = vec2(float(posX).div(width), float(posY).div(height));
-
+const F = Fn(() => {
     const v = distance(uv, vec2(.5));
-    const c = hue(color('#f00000'), v.mul(20.28));
+    const c = hue(color('#f00000'), v.mul(20));
 
     textureStore(textureF, indexUV, vec4(c, 1.0)).toWriteOnly();
 });
+const nodeF = F().compute(width * height);
 
-const computeInitNode = computeInit().compute(width * height);
+// dF/dx
+const textureFdx = new THREE.StorageTexture(width, height);
+textureFdx.minFilter = THREE.NearestFilter;
+textureFdx.magFilter = THREE.NearestFilter;
 
-export { computeInitNode, textureF };
+const Fdx = Fn(() => {
+    const o = textureLoad(textureF, indexUV.add(ivec2(0, 0))).r;
+    const p = textureLoad(textureF, indexUV.add(ivec2(1, 0))).r;
+
+    const v = p.sub(o);
+    const c = hue(color('#0000f0'), v.mul(2.5));
+
+    textureStore(textureFdx, indexUV, vec4(c, 1.0)).toWriteOnly();
+});
+const nodeFdx = Fdx().compute(width * height);
+
+// dF/dy
+const textureFdy = new THREE.StorageTexture(width, height);
+textureFdy.minFilter = THREE.NearestFilter;
+textureFdy.magFilter = THREE.NearestFilter;
+
+const Fdy = Fn(() => {
+    const o = textureLoad(textureF, indexUV.add(ivec2(0, 0))).r;
+    const p = textureLoad(textureF, indexUV.add(ivec2(0, 1))).r;
+
+    const v = p.sub(o);
+    const c = hue(color('#00f0f0'), v.mul(3));
+
+    textureStore(textureFdy, indexUV, vec4(c, 1.0)).toWriteOnly();
+});
+const nodeFdy = Fdy().compute(width * height);
+
+// export
+export { nodeF, textureF };
+export { nodeFdx, textureFdx };
+export { nodeFdy, textureFdy };

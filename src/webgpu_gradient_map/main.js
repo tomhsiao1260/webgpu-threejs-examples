@@ -1,7 +1,9 @@
 import * as THREE from 'three/webgpu';
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
 
-import { computeInitNode, textureF } from './shader.js';
+import { nodeF, textureF } from './shader.js';
+import { nodeFdx, textureFdx } from './shader.js';
+import { nodeFdy, textureFdy } from './shader.js';
 
 let camera, scene, renderer;
 
@@ -19,11 +21,21 @@ async function init() {
 
   scene = new THREE.Scene();
 
-  const material = new THREE.MeshBasicNodeMaterial({ color: 0xffffff });
-  material.map = textureF;
+  const geometry = new THREE.PlaneGeometry(1, 1);
 
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
-  scene.add(plane);
+  const mF = new THREE.MeshBasicNodeMaterial({ map: textureF });
+  const mFdx = new THREE.MeshBasicNodeMaterial({ map: textureFdx });
+  const mFdy = new THREE.MeshBasicNodeMaterial({ map: textureFdy });
+
+  const cardF = new THREE.Mesh(geometry, mF);
+  const cardFdx = new THREE.Mesh(geometry, mFdx);
+  const cardFdy = new THREE.Mesh(geometry, mFdy);
+
+  cardF.position.x = -1.2;
+  cardFdx.position.x = 0;
+  cardFdy.position.x = 1.2;
+
+  scene.add(cardF, cardFdx, cardFdy);
 
   renderer = new THREE.WebGPURenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -32,7 +44,9 @@ async function init() {
 
   await renderer.init();
 
-  renderer.compute(computeInitNode);
+  renderer.compute(nodeF);
+  renderer.compute(nodeFdx);
+  renderer.compute(nodeFdy);
 
   window.addEventListener('resize', onWindowResize);
 }
