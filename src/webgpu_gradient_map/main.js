@@ -4,6 +4,7 @@ import WebGPU from 'three/addons/capabilities/WebGPU.js';
 import { nodeF, textureF } from './shader.js';
 import { nodeFdx, textureFdx } from './shader.js';
 import { nodeFdy, textureFdy } from './shader.js';
+import { nodeFs } from './shader.js';
 
 let camera, scene, renderer;
 
@@ -68,3 +69,11 @@ function render() {
   renderer.render(scene, camera);
 }
 
+document.addEventListener('keypress', (e) => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+
+    renderer.compute(nodeFs);
+    renderer.render(scene, camera);
+  }
+})

@@ -56,7 +56,17 @@ const Fdy = Fn(() => {
 });
 const nodeFdy = Fdy().compute(width * height);
 
+// F sum
+const Fs = Fn(() => {
+    const c = vec3(uv, 1.0);
+
+    textureStore(textureF, indexUV, vec4(c, 1.0)).toWriteOnly();
+});
+const nodeFs = Fs().compute(width * height);
+
 // export
 export { nodeF, textureF };
 export { nodeFdx, textureFdx };
 export { nodeFdy, textureFdy };
+
+export { nodeFs };
