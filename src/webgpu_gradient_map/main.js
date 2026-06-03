@@ -7,6 +7,9 @@ import { nodeFdy, textureFdy } from './shader.js';
 
 let camera, scene, renderer;
 
+let phase = true;
+const material = {};
+
 init().then(render);
 
 async function init() {
@@ -23,13 +26,13 @@ async function init() {
 
   const geometry = new THREE.PlaneGeometry(1, 1);
 
-  const mF = new THREE.MeshBasicNodeMaterial({ map: textureF });
-  const mFdx = new THREE.MeshBasicNodeMaterial({ map: textureFdx });
-  const mFdy = new THREE.MeshBasicNodeMaterial({ map: textureFdy });
+  material.mF = new THREE.MeshBasicNodeMaterial({ map: textureF.init });
+  material.mFdx = new THREE.MeshBasicNodeMaterial({ map: textureFdx });
+  material.mFdy = new THREE.MeshBasicNodeMaterial({ map: textureFdy });
 
-  const cardF = new THREE.Mesh(geometry, mF);
-  const cardFdx = new THREE.Mesh(geometry, mFdx);
-  const cardFdy = new THREE.Mesh(geometry, mFdy);
+  const cardF = new THREE.Mesh(geometry, material.mF);
+  const cardFdx = new THREE.Mesh(geometry, material.mFdx);
+  const cardFdy = new THREE.Mesh(geometry, material.mFdy);
 
   cardF.position.x = -1.2;
   cardFdx.position.x = 0;
@@ -44,7 +47,7 @@ async function init() {
 
   await renderer.init();
 
-  renderer.compute(nodeF);
+  renderer.compute(nodeF.init);
   renderer.compute(nodeFdx);
   renderer.compute(nodeFdy);
 
@@ -71,6 +74,11 @@ function render() {
 document.addEventListener('keypress', (e) => {
   if (e.code === 'Space') {
     e.preventDefault();
+
+    renderer.compute(phase ? nodeF.pong : nodeF.ping);
+    material.mF.map = phase ? textureF.pong : textureF.ping;
+
+    phase = !phase;
 
     renderer.render(scene, camera);
   }
