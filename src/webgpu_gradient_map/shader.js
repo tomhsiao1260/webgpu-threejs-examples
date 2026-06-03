@@ -56,44 +56,7 @@ const Fdy = Fn(() => {
 });
 const nodeFdy = Fdy().compute(width * height);
 
-// dF/dx sum
-const textureFdxs = new THREE.StorageTexture(width, height);
-textureFdxs.minFilter = THREE.NearestFilter;
-textureFdxs.magFilter = THREE.NearestFilter;
-
-const Fdxs = Fn(() => {
-    const o = textureLoad(textureFdx, indexUV).r;
-    const c = vec3(o);
-
-    textureStore(textureFdxs, indexUV, vec4(c, 1.0)).toWriteOnly();
-});
-const nodeFdxs = Fdxs().compute(width * height);
-
-// dF/dy sum
-const textureFdys = new THREE.StorageTexture(width, height);
-textureFdys.minFilter = THREE.NearestFilter;
-textureFdys.magFilter = THREE.NearestFilter;
-
-const Fdys = Fn(() => {
-    const o = textureLoad(textureFdy, indexUV).r;
-    const c = vec3(o);
-
-    textureStore(textureFdys, indexUV, vec4(c, 1.0)).toWriteOnly();
-});
-const nodeFdys = Fdys().compute(width * height);
-
-// F sum
-const Fs = Fn(() => {
-    const dx = textureLoad(textureFdxs, indexUV).r;
-    const dy = textureLoad(textureFdys, indexUV).r;
-    const c = vec3(dx.add(dy));
-
-    textureStore(textureF, indexUV, vec4(c, 1.0)).toWriteOnly();
-});
-const nodeFs = Fs().compute(width * height);
-
 // export
 export { nodeF, textureF };
 export { nodeFdx, textureFdx };
 export { nodeFdy, textureFdy };
-export { nodeFs, nodeFdxs, nodeFdys };
