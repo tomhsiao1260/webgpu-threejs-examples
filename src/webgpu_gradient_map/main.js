@@ -1,8 +1,7 @@
 import * as THREE from 'three/webgpu';
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
 
-import { nodeF, textureF } from './shader.js';
-import { nodeFc, textureFc } from './shader.js';
+import { textureF, nodeF, nodeFc } from './shader.js';
 
 let camera, scene, renderer;
 
@@ -24,7 +23,7 @@ async function init() {
   scene = new THREE.Scene();
 
   const geometry = new THREE.PlaneGeometry(1, 1);
-  material.mF = new THREE.MeshBasicNodeMaterial({ map: textureFc });
+  material.mF = new THREE.MeshBasicNodeMaterial({ map: textureF.color });
 
   const cardF = new THREE.Mesh(geometry, material.mF);
   cardF.position.x = 0;
