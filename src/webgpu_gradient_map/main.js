@@ -2,8 +2,7 @@ import * as THREE from 'three/webgpu';
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
 
 import { nodeF, textureF } from './shader.js';
-import { nodeFdx, textureFdx } from './shader.js';
-import { nodeFdy, textureFdy } from './shader.js';
+import { nodeFc, textureFc } from './shader.js';
 
 let camera, scene, renderer;
 
@@ -19,26 +18,18 @@ async function init() {
   }
 
   const aspect = window.innerWidth / window.innerHeight;
-  camera = new THREE.OrthographicCamera(-aspect, aspect, 1, - 1, 0, 2);
+  camera = new THREE.OrthographicCamera(-aspect*.8, aspect*.8, .8, -.8, 0, 2);
   camera.position.z = 1;
 
   scene = new THREE.Scene();
 
   const geometry = new THREE.PlaneGeometry(1, 1);
-
-  material.mF = new THREE.MeshBasicNodeMaterial({ map: textureF.init });
-  material.mFdx = new THREE.MeshBasicNodeMaterial({ map: textureFdx });
-  material.mFdy = new THREE.MeshBasicNodeMaterial({ map: textureFdy });
+  material.mF = new THREE.MeshBasicNodeMaterial({ map: textureFc });
 
   const cardF = new THREE.Mesh(geometry, material.mF);
-  const cardFdx = new THREE.Mesh(geometry, material.mFdx);
-  const cardFdy = new THREE.Mesh(geometry, material.mFdy);
+  cardF.position.x = 0;
 
-  cardF.position.x = -1.2;
-  cardFdx.position.x = 0;
-  cardFdy.position.x = 1.2;
-
-  scene.add(cardF, cardFdx, cardFdy);
+  scene.add(cardF);
 
   renderer = new THREE.WebGPURenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -48,8 +39,7 @@ async function init() {
   await renderer.init();
 
   renderer.compute(nodeF.init);
-  renderer.compute(nodeFdx);
-  renderer.compute(nodeFdy);
+  renderer.compute(nodeFc.init);
 
   window.addEventListener('resize', onWindowResize);
 }
@@ -76,8 +66,7 @@ document.addEventListener('keypress', (e) => {
     e.preventDefault();
 
     renderer.compute(phase ? nodeF.pong : nodeF.ping);
-    material.mF.map = phase ? textureF.pong : textureF.ping;
-
+    renderer.compute(phase ? nodeFc.pong : nodeFc.ping);
     phase = !phase;
 
     renderer.render(scene, camera);
