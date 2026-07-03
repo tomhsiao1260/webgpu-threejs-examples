@@ -1,6 +1,6 @@
 import * as THREE from 'three/webgpu';
 
-import { Fn, If, hue, color, distance } from 'three/tsl';
+import { Fn, If, mod, hue, color, distance } from 'three/tsl';
 import { int, float, vec2, vec3, vec4, uvec2, ivec2 } from 'three/tsl';
 import { storageTexture, textureStore, instanceIndex, textureLoad, NodeAccess } from 'three/tsl';
 
@@ -43,13 +43,33 @@ const Fi = Fn(([ writeTex ]) => {
 const F = Fn(([ readTex, writeTex ]) => {
     const o = textureLoad(readTex, indexUV).r;
 
-    If(indexUV.y.greaterThan(7), () => {
-        const p = textureLoad(readTex, ivec2(0, 8)).r;
-        const q = textureLoad(readTex, ivec2(0, 7)).r;
+    // // y diff split
+    // If(indexUV.y.greaterThan(7), () => {
+    //     const p = textureLoad(readTex, ivec2(0, 8)).r;
+    //     const q = textureLoad(readTex, ivec2(0, 7)).r;
+    //     const r = p.sub(q);
+    //     const s = o.sub(r);
+
+    //     If(indexUV.x.equal(0).and(indexUV.y.equal(8)), () => {
+    //         textureStore(writeTex, indexUV, vec4(vec3(r), 1.0)).toWriteOnly();
+    //     }).Else(() => {
+    //         textureStore(writeTex, indexUV, vec4(vec3(s), 1.0)).toWriteOnly();
+    //     })
+    // }).Else(() => {
+    //     textureStore(writeTex, indexUV, vec4(vec3(o), 1.0)).toWriteOnly();
+    // })
+
+    // x diff split
+    If(indexUV.x.greaterThan(7), () => {
+        const xp = indexUV.x.sub(mod(indexUV.x, 8));
+        const yp = indexUV.y.sub(mod(indexUV.y, 8));
+
+        const p = textureLoad(readTex, ivec2(xp, yp)).r;
+        const q = textureLoad(readTex, ivec2(xp, yp).sub(ivec2(-1, 0))).r;
         const r = p.sub(q);
         const s = o.sub(r);
 
-        If(indexUV.x.equal(0).and(indexUV.y.equal(8)), () => {
+        If(indexUV.equal(ivec2(xp, yp)), () => {
             textureStore(writeTex, indexUV, vec4(vec3(r), 1.0)).toWriteOnly();
         }).Else(() => {
             textureStore(writeTex, indexUV, vec4(vec3(s), 1.0)).toWriteOnly();
