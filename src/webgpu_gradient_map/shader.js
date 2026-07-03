@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 
-import { Fn, If, mod, hue, color, distance } from 'three/tsl';
 import { int, float, vec2, vec3, vec4, uvec2, ivec2 } from 'three/tsl';
+import { Fn, If, uniform, mod, hue, color, distance } from 'three/tsl';
 import { storageTexture, textureStore, instanceIndex, textureLoad, NodeAccess } from 'three/tsl';
 
 // uv
@@ -40,43 +40,41 @@ const Fi = Fn(([ writeTex ]) => {
     textureStore(writeTex, indexUV, vec4(c, 1.0)).toWriteOnly();
 });
 
+// 0: x-split, 1: y-split
+const mode = uniform(0);
+
 const F = Fn(([ readTex, writeTex ]) => {
     const o = textureLoad(readTex, indexUV).r;
+    const value = float(o).toVar();
 
-    // // y diff split
-    // If(indexUV.y.greaterThan(7), () => {
-    //     const p = textureLoad(readTex, ivec2(0, 8)).r;
-    //     const q = textureLoad(readTex, ivec2(0, 7)).r;
-    //     const r = p.sub(q);
-    //     const s = o.sub(r);
+    // x-split
+    const line = indexUV.x.toVar();
+    const split = uvec2(8, 8).toVar();
+    const neighbor = ivec2(-1, 0).toVar();
 
-    //     If(indexUV.x.equal(0).and(indexUV.y.equal(8)), () => {
-    //         textureStore(writeTex, indexUV, vec4(vec3(r), 1.0)).toWriteOnly();
-    //     }).Else(() => {
-    //         textureStore(writeTex, indexUV, vec4(vec3(s), 1.0)).toWriteOnly();
-    //     })
-    // }).Else(() => {
-    //     textureStore(writeTex, indexUV, vec4(vec3(o), 1.0)).toWriteOnly();
-    // })
+    // y-split
+    If(mode.equal(1), () => {
+        line.assign(indexUV.y);
+        split.assign(ivec2(16, 8));
+        neighbor.assign(ivec2(0, -1));
+    })
 
-    // x diff split
-    If(indexUV.x.greaterThan(7), () => {
-        const xp = indexUV.x.sub(mod(indexUV.x, 8));
-        const yp = indexUV.y.sub(mod(indexUV.y, 8));
+    If(mod(line, 16).greaterThanEqual(8), () => {
+        const xp = indexUV.x.sub(mod(indexUV.x, split.x));
+        const yp = indexUV.y.sub(mod(indexUV.y, split.y));
 
-        const p = textureLoad(readTex, ivec2(xp, yp)).r;
-        const q = textureLoad(readTex, ivec2(xp, yp).sub(ivec2(-1, 0))).r;
-        const r = p.sub(q);
+        const t = textureLoad(readTex, ivec2(xp, yp)).r;
+        const n = textureLoad(readTex, ivec2(xp, yp).sub(neighbor)).r;
+        const r = t.sub(n);
         const s = o.sub(r);
 
         If(indexUV.equal(ivec2(xp, yp)), () => {
-            textureStore(writeTex, indexUV, vec4(vec3(r), 1.0)).toWriteOnly();
+            value.assign(r);
         }).Else(() => {
-            textureStore(writeTex, indexUV, vec4(vec3(s), 1.0)).toWriteOnly();
+            value.assign(s);
         })
-    }).Else(() => {
-        textureStore(writeTex, indexUV, vec4(vec3(o), 1.0)).toWriteOnly();
     })
+    textureStore(writeTex, indexUV, vec4(vec3(value), 1.0)).toWriteOnly();
 });
 
 const nodeF = { init: null, ping: null, pong: null };
