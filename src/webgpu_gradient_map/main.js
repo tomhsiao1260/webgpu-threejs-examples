@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
 
-import { textureF, nodeF, nodeFc } from './shader.js';
+import { textureF, nodeF, nodeFc, mode } from './shader.js';
 
 let camera, scene, renderer;
 
@@ -64,8 +64,13 @@ document.addEventListener('keypress', (e) => {
   if (e.code === 'Space') {
     e.preventDefault();
 
+    if (mode.n.value < 0) return;
+    console.log(mode.n.value);
+
     renderer.compute(phase ? nodeF.pong : nodeF.ping);
     renderer.compute(phase ? nodeFc.pong : nodeFc.ping);
+
+    mode.n.value -= 1;
     phase = !phase;
 
     renderer.render(scene, camera);

@@ -40,39 +40,41 @@ const Fi = Fn(([ writeTex ]) => {
     textureStore(writeTex, indexUV, vec4(c, 1.0)).toWriteOnly();
 });
 
-// 2n: x-split / y-split: 2n+1
-const mode = uniform(7);
+const mode = { n: 0, state: 0 };
+// x-mode (0,2,4,6,...) / y-mode (1,3,5,7,...)
+mode.n = uniform(Math.floor(width / 2) - 1);
+// split 0 / merge 1
+mode.state = 0;
 
 const F = Fn(([ readTex, writeTex ]) => {
-    const o = textureLoad(readTex, indexUV).r;
-    const value = float(o).toVar();
-    const length = pow(2, mode.div(2).floor().add(1));
+    const length = pow(2, mode.n.div(2).floor().add(1));
+    const vo = textureLoad(readTex, indexUV).r;
+    const value = float(vo).toVar();
 
-    // x-split
-    const line = indexUV.x.toVar();
-    const split = uvec2(length.div(2), length.div(2)).toVar();
+    // x-mode (0,2,4,6,...)
+    const coords = indexUV.x.toVar();
+    const windows = uvec2(length.div(2), length.div(2)).toVar();
     const neighbor = ivec2(-1, 0).toVar();
 
-    // y-split
-    If(mod(mode, 2).equal(1), () => {
-        line.assign(indexUV.y);
-        split.assign(ivec2(length, length.div(2)));
+    // y-mode (1,3,5,7,...)
+    If(mod(mode.n, 2).equal(1), () => {
+        coords.assign(indexUV.y);
+        windows.assign(ivec2(length, length.div(2)));
         neighbor.assign(ivec2(0, -1));
     })
 
-    If(mod(line, length).greaterThanEqual(length.div(2)), () => {
-        const xp = indexUV.x.sub(mod(indexUV.x, split.x));
-        const yp = indexUV.y.sub(mod(indexUV.y, split.y));
+    If(mod(coords, length).greaterThanEqual(length.div(2)), () => {
+        const xp = indexUV.x.sub(mod(indexUV.x, windows.x));
+        const yp = indexUV.y.sub(mod(indexUV.y, windows.y));
 
-        const t = textureLoad(readTex, ivec2(xp, yp)).r;
-        const n = textureLoad(readTex, ivec2(xp, yp).sub(neighbor)).r;
-        const r = t.sub(n);
-        const s = o.sub(r);
+        const p = ivec2(xp, yp);
+        const vp = textureLoad(readTex, p).r;
+        const vn = textureLoad(readTex, p.sub(neighbor)).r;
 
-        If(indexUV.equal(ivec2(xp, yp)), () => {
-            value.assign(r);
+        If(indexUV.equal(p), () => {
+            value.assign(vp.sub(vn));
         }).Else(() => {
-            value.assign(s);
+            value.assign(vo.sub(vp.sub(vn)));
         })
     })
     textureStore(writeTex, indexUV, vec4(vec3(value), 1.0)).toWriteOnly();
@@ -97,4 +99,4 @@ nodeFc.pong = Fc(readPongF, textureF.color).compute(width * height);
 nodeFc.init = nodeFc.ping;
 
 // export
-export { textureF, nodeF, nodeFc };
+export { textureF, nodeF, nodeFc, mode };
