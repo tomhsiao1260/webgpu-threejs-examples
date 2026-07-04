@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 
 import { int, float, vec2, vec3, vec4, uvec2, ivec2 } from 'three/tsl';
-import { Fn, If, uniform, mod, hue, color, distance } from 'three/tsl';
+import { Fn, If, uniform, mod, pow, hue, color, distance } from 'three/tsl';
 import { storageTexture, textureStore, instanceIndex, textureLoad, NodeAccess } from 'three/tsl';
 
 // uv
@@ -40,26 +40,27 @@ const Fi = Fn(([ writeTex ]) => {
     textureStore(writeTex, indexUV, vec4(c, 1.0)).toWriteOnly();
 });
 
-// 0: x-split, 1: y-split
-const mode = uniform(0);
+// 2n: x-split / y-split: 2n+1
+const mode = uniform(7);
 
 const F = Fn(([ readTex, writeTex ]) => {
     const o = textureLoad(readTex, indexUV).r;
     const value = float(o).toVar();
+    const length = pow(2, mode.div(2).floor().add(1));
 
     // x-split
     const line = indexUV.x.toVar();
-    const split = uvec2(8, 8).toVar();
+    const split = uvec2(length.div(2), length.div(2)).toVar();
     const neighbor = ivec2(-1, 0).toVar();
 
     // y-split
-    If(mode.equal(1), () => {
+    If(mod(mode, 2).equal(1), () => {
         line.assign(indexUV.y);
-        split.assign(ivec2(16, 8));
+        split.assign(ivec2(length, length.div(2)));
         neighbor.assign(ivec2(0, -1));
     })
 
-    If(mod(line, 16).greaterThanEqual(8), () => {
+    If(mod(line, length).greaterThanEqual(length.div(2)), () => {
         const xp = indexUV.x.sub(mod(indexUV.x, split.x));
         const yp = indexUV.y.sub(mod(indexUV.y, split.y));
 
