@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 
-import { float, vec2, vec3, vec4, uvec2, ivec2 } from 'three/tsl';
-import { uint, Fn, If, uniform, mod, pow, hue, color, distance, countTrailingZeros } from 'three/tsl';
+import { int, float, vec2, vec3, vec4, uvec2, ivec2 } from 'three/tsl';
+import { Fn, If, uniform, mod, pow, hue, color, distance } from 'three/tsl';
 import { storageTexture, textureStore, instanceIndex, textureLoad, NodeAccess } from 'three/tsl';
 
 // uv
@@ -34,39 +34,20 @@ const writePongF = storageTexture(textureF.pong).setAccess(NodeAccess.WRITE_ONLY
 
 const Fi = Fn(([ writeTex ]) => {
     // const v = distance(uv, vec2(.5));
-    // const v = uv.x.add(uv.y);
-    // const c = vec3(v).mul(.5);
-    const v = uv.x;
-    const c = vec3(v);
+    const v = uv.x.add(uv.y);
+    const c = vec3(v).mul(.5);
 
     textureStore(writeTex, indexUV, vec4(c, 1.0)).toWriteOnly();
 });
 
+const mode = { n: null, state: null };
 // x-mode (0,2,4,6,...) / y-mode (1,3,5,7,...)
-const mode = uniform(Math.floor(width / 2));
+mode.n = uniform(Math.floor(width / 2));
+// split 0 / merge 1
+mode.state = uniform(0);
 
-// split
-const Fsplit = Fn(([ readTex, writeTex ]) => {
-    const neighbor = ivec2(0, -1).toVar();
-
-    If(mod(indexUV.x, 2).equal(1), () => {
-        neighbor.assign(ivec2(-1, 0));
-    }).ElseIf(indexUV.x.notEqual(0), () => {
-        const shift = pow(2, float(countTrailingZeros(indexUV.x)));
-        If(mod(indexUV.y, shift).equal(0), () => {
-            neighbor.assign(ivec2(-1, 0));
-        })
-    })
-
-    const vo = textureLoad(readTex, indexUV).r;
-    const vn = textureLoad(readTex, indexUV.add(neighbor)).r;
-    const value = vec4(vec3(vo.sub(vn)), 1.0);
-    textureStore(writeTex, indexUV, value).toWriteOnly();
-});
-
-// merge
-const Fmerge = Fn(([ readTex, writeTex ]) => {
-    const length = pow(2, mode.div(2).floor().add(1));
+const F = Fn(([ readTex, writeTex ]) => {
+    const length = pow(2, mode.n.div(2).floor().add(1));
     const vo = textureLoad(readTex, indexUV).r;
     const value = float(vo).toVar();
 
@@ -76,7 +57,7 @@ const Fmerge = Fn(([ readTex, writeTex ]) => {
     const neighbor = ivec2(-1, 0).toVar();
 
     // y-mode (1,3,5,7,...)
-    If(mod(mode, 2).equal(1), () => {
+    If(mod(mode.n, 2).equal(1), () => {
         coords.assign(indexUV.y);
         windows.assign(ivec2(length, length.div(2)));
         neighbor.assign(ivec2(0, -1));
@@ -85,37 +66,53 @@ const Fmerge = Fn(([ readTex, writeTex ]) => {
     If(mod(coords, length).greaterThanEqual(length.div(2)), () => {
         const xp = indexUV.x.sub(mod(indexUV.x, windows.x));
         const yp = indexUV.y.sub(mod(indexUV.y, windows.y));
+
         const p = ivec2(xp, yp);
         const vp = textureLoad(readTex, p).r;
         const vn = textureLoad(readTex, p.add(neighbor)).r;
 
-        If(indexUV.equal(p), () => {
-            value.assign(vp.add(vn));
-        }).Else(() => {
-            value.assign(vo.add(vp));
+        // split
+        If(mode.state.equal(0), () => {
+            If(indexUV.equal(p), () => {
+                value.assign(vp.sub(vn));
+            }).Else(() => {
+                value.assign(vo.sub(vp.sub(vn)));
+            })
+        })
+        // merge
+        If(mode.state.equal(1), () => {
+            If(indexUV.equal(p), () => {
+                value.assign(vp.add(vn));
+            }).Else(() => {
+                value.assign(vo.add(vp));
+            })
         })
     })
     textureStore(writeTex, indexUV, vec4(vec3(value), 1.0)).toWriteOnly();
 });
 
-const nodeF = { split: {}, merge: {}, init: null };
-nodeF.split.ping = Fsplit(readPongF, writePingF).compute(width * height);
-nodeF.split.pong = Fsplit(readPingF, writePongF).compute(width * height);
-nodeF.merge.ping = Fmerge(readPongF, writePingF).compute(width * height);
-nodeF.merge.pong = Fmerge(readPingF, writePongF).compute(width * height);
+// 第 0 格無法順利還原
+// 沒有均色
+// const v = uint(value).toVar();           
+// const zeros = countTrailingZeros(v);
+// return pow( uint(2), zeros );
+
+const nodeF = { init: null, ping: null, pong: null };
 nodeF.init = Fi(writePingF).compute(width * height);
+nodeF.ping = F(readPongF, writePingF).compute(width * height);
+nodeF.pong = F(readPingF, writePongF).compute(width * height);
 
 // color
-const Fcolor = Fn(([ readTex, writeTex ]) => {
+const Fc = Fn(([ readTex, writeTex ]) => {
     const o = textureLoad(readTex, indexUV).r;
     const c = hue(color('#f00000'), o.mul(20));
 
     textureStore(writeTex, indexUV, vec4(c, 1.0)).toWriteOnly();
 });
 
-const nodeFc = { ping: null, pong: null, init: null };
-nodeFc.ping = Fcolor(readPingF, textureF.color).compute(width * height);
-nodeFc.pong = Fcolor(readPongF, textureF.color).compute(width * height);
+const nodeFc = { init: null, ping: null, pong: null };
+nodeFc.ping = Fc(readPingF, textureF.color).compute(width * height);
+nodeFc.pong = Fc(readPongF, textureF.color).compute(width * height);
 nodeFc.init = nodeFc.ping;
 
 // export

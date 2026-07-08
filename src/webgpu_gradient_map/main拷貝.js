@@ -61,21 +61,25 @@ document.addEventListener('keypress', (e) => {
   e.preventDefault();
 
   // split
-  if (e.code === 'Space' && mode.value == 8) {
-    renderer.compute(phase ? nodeF.split.pong : nodeF.split.ping);
-    renderer.compute(phase ? nodeFc.pong : nodeFc.ping);
-    renderer.render(scene, camera);
-    phase = !phase;
-    mode.value = 0;
+  if (e.code === 'Space' && mode.n.value > 0) {
+    mode.state.value = 0;
+    mode.n.value -= 1;
+    render();
   }
 
   // merge
-  if (e.code === 'Enter' && mode.value <= 7) {
-    renderer.compute(phase ? nodeF.merge.pong : nodeF.merge.ping);
-    renderer.compute(phase ? nodeFc.pong : nodeFc.ping);
-    renderer.render(scene, camera);
-    phase = !phase;
-    mode.value += 1;
+  if (e.code === 'Enter' && mode.n.value <= 7) {
+    mode.state.value = 1;
+    render();
+    mode.n.value += 1;
   }
-  console.log(mode.value)
+
+  console.log('mode: ', mode.n.value);
 })
+
+function render() {
+  renderer.compute(phase ? nodeF.pong : nodeF.ping);
+  renderer.compute(phase ? nodeFc.pong : nodeFc.ping);
+  renderer.render(scene, camera);
+  phase = !phase;
+}
